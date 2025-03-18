@@ -15,7 +15,7 @@ app.use(cors({
 }));
 
 // Serve static files from the 'public' directory
-app.use(express.static(path.join(__dirname, "public")));
+app.use(express.static(__dirname));
 
 // Set SendGrid API key
 if (!process.env.SENDGRID_API_KEY) {
@@ -50,7 +50,7 @@ app.post("/send", async (req, res) => {
 
 // Serve the frontend by default
 app.get("*", (req, res) => {
-    res.sendFile(path.join(__dirname, "public", "index.html"));
+    res.sendFile(path.join(__dirname, "index.html"));
 });
 
 // Start the server
