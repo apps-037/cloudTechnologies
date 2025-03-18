@@ -1,41 +1,58 @@
 const express = require("express");
-const sgMail = require('@sendgrid/mail');
+const sgMail = require("@sendgrid/mail");
 const cors = require("cors");
-require('dotenv').config(); // Load environment variables
+const path = require("path");
+require("dotenv").config(); // Load environment variables
 
 const app = express();
-app.use(express.json());
-app.use(cors());
-app.use(express.static('public')); // Serve static files from the 'public' directory
 
-sgMail.setApiKey(process.env.SENDGRID_API_KEY); // Set your SendGrid API key
+// Middleware
+app.use(express.json());
+app.use(cors({
+    origin: "*", // Change to your frontend URL in production
+    methods: "GET,POST",
+    allowedHeaders: "Content-Type"
+}));
+
+// Serve static files from the 'public' directory
+app.use(express.static(path.join(__dirname, "public")));
+
+// Set SendGrid API key
+if (!process.env.SENDGRID_API_KEY) {
+    console.error("SENDGRID_API_KEY is not set in environment variables.");
+    process.exit(1); // Exit the process if API key is missing
+}
+sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
 app.post("/send", async (req, res) => {
     const { name, email, phone, date, message } = req.body;
 
+    if (!name || !email || !message) {
+        return res.status(400).json({ error: "Name, email, and message are required." });
+    }
+
     const msg = {
-        to: 'sainiclasses.pune@gmail.com', // Change to your recipient email
-        from: 'appsaini602@gmail.com', // Change to your verified sender email
+        to: "sainiclasses.pune@gmail.com", // Change to your recipient email
+        from: "appsaini602@gmail.com", // Change to your verified sender email
         subject: `New Inquiry from ${name}`,
         text: `Name: ${name}\nEmail: ${email}\nPhone: ${phone}\nDate: ${date}\nMessage: ${message}`,
-        html: `<strong>Name: ${name}</strong><br>Email: ${email}<br>Phone: ${phone}<br>Date: ${date}<br>Message: ${message}`,
+        html: `<strong>Name:</strong> ${name}<br><strong>Email:</strong> ${email}<br><strong>Phone:</strong> ${phone}<br><strong>Date:</strong> ${date}<br><strong>Message:</strong> ${message}`,
     };
 
     try {
         await sgMail.send(msg);
-        res.status(200).send("Email sent successfully!");
+        res.status(200).json({ message: "Email sent successfully!" });
     } catch (error) {
-        console.error("Error sending email:", error);
-        res.status(500).send("Error sending email.");
+        console.error("Error sending email:", error.response ? error.response.body : error);
+        res.status(500).json({ error: "Error sending email." });
     }
 });
 
 // Serve the frontend by default
-app.get('*', (req, res) => {
-    res.sendFile(__dirname + '/public/index.html'); // Adjust the path as needed
+app.get("*", (req, res) => {
+    res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
 // Start the server
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
-
